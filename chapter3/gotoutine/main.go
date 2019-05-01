@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 /*
@@ -17,6 +18,10 @@ go function()
 */
 
 func main() {
+	sample2()
+}
+
+func sample1() {
 	go hello()
 	sayHello := func() {
 		fmt.Println("HELLO!")
@@ -26,4 +31,17 @@ func main() {
 
 func hello() {
 	fmt.Println("Hello!")
+}
+
+func sample2() {
+	var wg sync.WaitGroup
+	sayHello := func() {
+		defer wg.Done() //終了を伝える
+		fmt.Println("hello!")
+	}
+	fmt.Println("開始")
+	wg.Add(1)
+	go sayHello()
+	wg.Wait() //終了の待機
+	fmt.Println("終了")
 }
