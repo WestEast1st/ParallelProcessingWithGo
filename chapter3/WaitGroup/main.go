@@ -32,4 +32,17 @@ func main() {
 	}()
 	wg.Wait() //<3>
 	fmt.Println("All goroutine complete.")
+
+	//Addの呼び出しはできる限り監視対象のゴルーチンの直前に書くことが慣習です。
+	//しかし、時に関連するゴルーチンの呼び出しを一度に監視するために、Addの呼び出しが行われているのを見ることもあるでしょう。
+	hello := func(wg *sync.WaitGroup, id int) {
+		defer wg.Done()
+		fmt.Printf("Hello from %v\n", id)
+	}
+	const numGreeters = 5
+	wg.Add(numGreeters)
+	for i := 0; i < numGreeters; i++ {
+		go hello(&wg, i+1)
+	}
+	wg.Wait()
 }
