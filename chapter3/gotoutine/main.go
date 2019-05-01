@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 )
 
@@ -18,7 +19,7 @@ go function()
 */
 
 func main() {
-	sample3()
+	sample4()
 }
 
 func sample1() {
@@ -81,4 +82,25 @@ func sample3() {
 	}
 	wg.Wait()
 	fmt.Println("END")
+}
+
+func sample4() {
+	memConsmed := func() uint64 {
+		runtime.GC()
+		var s runtime.MemStats
+		runtime.ReadMemStats(&s)
+		return s.Sys
+	}
+	var c <-chan interface{}
+	var wg sync.WaitGroup
+	noop := func() { wg.Done(); <-c } //計算のために沢山のgo routineをメモリ上に配置、絶対に終了しないgo routineが必要。
+	const numGoroutines = 1e4         // ここで定義するgoroutineの数を定義する。漸近的にルーティンの数を増やす
+	wg.Add(numGoroutines)
+	before := memConsmed() //生成前のメモリ消費量
+	for i := numGoroutines; i > 0; i-- {
+		go noop()
+	}
+	wg.Wait()
+	after := memConsmed() //生成後のメモリ消費量
+	fmt.Printf("%.3fkb", float64(after-before)/numGoroutines/1000)
 }
