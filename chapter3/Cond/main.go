@@ -13,7 +13,7 @@ Cond型
 二つ以上のゴルーチン間で、それが発生したということ以外の情報がない任意のシグナルを指します。ゴルーチン上で処理を続ける前にこうした信号を受け取りたいということが非常によくあります。
 */
 func main() {
-	sampleCond()
+	sampleBroadCast()
 }
 
 func sampleCond() {
@@ -39,4 +39,45 @@ func sampleCond() {
 		go removeFromQueue(1 * time.Second) //<6> １秒後にキューを排出する
 		c.L.Unlock()                        //<7> キューが追加できたのでクリティカルセクションを解除
 	}
+}
+
+func sampleBroadCast() {
+	type Button struct { //<1>Clickedという条件を含んでいるButton型を製作
+		Clicked *sync.Cond
+	}
+	button := Button{Clicked: sync.NewCond(&sync.Mutex{})}
+
+	subscribe := func(c *sync.Cond, fn func()) { //<2>条件別にシグナルを扱う関数を登録する関数。かくしゅはんどらーは、それぞれのゴルーチン場で動作する
+		var goroutineRunning sync.WaitGroup
+		goroutineRunning.Add(1)
+		go func() {
+			goroutineRunning.Done()
+			c.L.Lock()
+			defer c.L.Unlock()
+			c.Wait()
+			fn()
+		}()
+		goroutineRunning.Wait()
+	}
+
+	var clickRegistered sync.WaitGroup //<3>全てのハンドラーにマウスのおボタンがクリックが行われたことを通知します
+	clickRegistered.Add(3)
+	subscribe(button.Clicked, func() { //<4>
+		fmt.Println("Maximizing window.")
+		clickRegistered.Done()
+	})
+
+	subscribe(button.Clicked, func() { //<5>
+		fmt.Println("Displaying annoying dialog box!")
+		clickRegistered.Done()
+	})
+
+	subscribe(button.Clicked, func() { //<6>
+		fmt.Println("Mouse clicked.")
+		clickRegistered.Done()
+	})
+
+	button.Clicked.Broadcast() //<7>
+
+	clickRegistered.Wait()
 }
